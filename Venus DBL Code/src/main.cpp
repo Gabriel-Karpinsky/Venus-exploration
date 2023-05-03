@@ -71,6 +71,11 @@ void backward(int time)                      // Backward function
   servoRight.writeMicroseconds(1700);        // Right wheel counterclockwise
   delay(time);                               // Maneuver for time ms
 }
+void sstop(int time){
+  servoLeft.writeMicroseconds(1500);
+  servoRight.writeMicroseconds(1500);
+  delay(time);         // Left wheel clockwise
+}
  /* int irLeft = irDetect(9, 10, 38000);       // Check for object on left
   int irRight = irDetect(2, 3, 38000);       // Check for object on right
 
