@@ -1,101 +1,87 @@
 #include <Arduino.h>
-#include <Servo.h>                           // Include servo library
- 
-Servo servoLeft;                             // Declare left and right servos
-Servo servoRight;
-void forward(int time);
-void setup()                                 // Built-in initialization block
-{
-  /*pinMode(10, INPUT);  pinMode(9, OUTPUT);   // Left IR LED & Receiver
-  pinMode(3, INPUT);  pinMode(2, OUTPUT);    // Right IR LED & Receiver
- */  
-  tone(4, 3000, 1000);  
-  Serial.begin(115200);   
-  // Play tone for 1 second
-  delay(1000);                               // Delay to finish tone
+#include <Servo.h>
+#include <Arduino_FreeRTOS.h>
 
-  pinMode(8, INPUT);
-  pinMode(7, INPUT);
+// Pins
+const int left_servo_pin         = 13;
+const int right_servo_pin        = 12;
+const int ultrasound_servo_pin   = 11;
+const int claw_servo_pin         = 10;
+const int ultrasound_pin         = 9;
+const int left_wheel_sensor_pin  = 8;
+const int right_wheel_sensor_pin = 7;
 
-  servoLeft.attach(12);                      // Attach left signal to pin 13
-  servoRight.attach(13);                     // Attach right signal to pin 12
-}  
- 
-void loop()                                  // Main loop auto-repeats
+// Components
+Servo left_servo;
+Servo right_servo;
+
+// Inputs
+uint32_t front_ultrasound_distance;
+
+// Tasks (threads)
+void thread_delay_millis(int milliseconds);
+void TaskSensorReading(void *pvParameters);
+void TaskMovement(void *pvParameters);
+
+void setup()
 {
-  //delay(1000);
-  //servoLeft.writeMicroseconds(1700);         // Left wheel counterclockwise
-  //servoRight.writeMicroseconds(0);
-  //delay(1000);
-  // servoLeft.writeMicroseconds(1500);
-  int pin8 = digitalRead(8);
-  int pin7 = digitalRead(7);
-  char buffer[128];
-  sprintf(buffer, "pin8 read: %d\n pin7 read: %d\n\n", pin8, pin7);
-  //Serial.println(buffer);
+    Serial.begin(115200);
+
+    // Sets up tasks (threads). One for movement logic, one for sensor reading.
+    xTaskCreate(TaskSensorReading,
+                "SensorReading",
+                128,         // Allocated stack size.
+                NULL,
+                2,           // Priority.
+                NULL);
+
+    xTaskCreate(TaskMovement,
+                "Movement",
+                128,
+                NULL,
+                1,
+                NULL);
+
+    left_servo.attach(left_servo_pin);
+    right_servo.attach(right_servo_pin);
+
+    left_servo.write(90);
+    right_servo.write(90);
 }
 
-int irDetect(int irLedPin, int irReceiverPin, long frequency)
+void loop()
 {
-  tone(irLedPin, frequency, 8);              // IRLED 38 kHz for at least 1 ms
-  delay(1);                                  // Wait 1 ms
-  int ir = digitalRead(irReceiverPin);       // IR receiver -> ir variable
-  delay(1);                                  // Down time before recheck
-  return ir;                                 // Return 1 no detect, 0 detect
-}  
-
-void forward(int time)                       // Forward function
-{
-  servoLeft.writeMicroseconds(1700);         // Left wheel counterclockwise
-  servoRight.writeMicroseconds(1300);        // Right wheel clockwise
-  delay(time);                               // Maneuver for time ms
+    left_servo.writeMicroseconds(1500);
+    right_servo.writeMicroseconds(1500);
 }
 
-void turnLeft(int time)                      // Left turn function
+void thread_delay_millis(int milliseconds)
 {
-  servoLeft.writeMicroseconds(1300);         // Left wheel clockwise
-  servoRight.writeMicroseconds(1300);        // Right wheel clockwise
-  delay(time);                               // Maneuver for time ms
+    vTaskDelay(milliseconds / portTICK_PERIOD_MS);
 }
 
-void turnRight(int time)                     // Right turn function
+void TaskSensorReading(void *pvParameters)
 {
-  servoLeft.writeMicroseconds(1700);         // Left wheel counterclockwise
-  servoRight.writeMicroseconds(1700);        // Right wheel counterclockwise
-  delay(time);                               // Maneuver for time ms
+    (void) pvParameters;
+
+    // Tasks require infinite loops inside.
+    for (;;)
+    {
+        Serial.println("This should be printed out once a second.\n");
+        thread_delay_millis(1000);
+
+    }
 }
 
-void backward(int time)                      // Backward function
+void TaskMovement(void *pvParameters)
 {
-  servoLeft.writeMicroseconds(1300);         // Left wheel clockwise
-  servoRight.writeMicroseconds(1700);        // Right wheel counterclockwise
-  delay(time);                               // Maneuver for time ms
-}
-void sstop(int time){
-  servoLeft.writeMicroseconds(1500);
-  servoRight.writeMicroseconds(1500);
-  delay(time);         // Left wheel clockwise
-}
- /* int irLeft = irDetect(9, 10, 38000);       // Check for object on left
-  int irRight = irDetect(2, 3, 38000);       // Check for object on right
+    (void) pvParameters;
 
-  if((irLeft == 0) && (irRight == 0))        // If both sides detect
-  {
-    backward(1000);                          // Back up 1 second
-    turnLeft(800);                           // Turn left about 120 degrees
-  }
-  else if(irLeft == 0)                       // If only left side detects
-  {
-    backward(1000);                          // Back up 1 second
-    turnRight(400);                          // Turn right about 60 degrees
-  }
-  else if(irRight == 0)                      // If only right side detects
-  {
-    backward(1000);                          // Back up 1 second
-    turnLeft(400);                           // Turn left about 60 degrees
-  }
-  else                                       // Otherwise, no IR detected
-  {
-    forward(20);                             // Forward 1/50 of a second
-  }
-  */
+    // Tasks require infinite loops inside.
+    for (;;)
+    {
+        Serial.println("This should be printed out twice a second.\n");
+        thread_delay_millis(2000);
+    }
+}
+
