@@ -22,10 +22,7 @@ const int right_wheel_sensor_pin = 7;
 Servo left_servo;
 Servo right_servo;
 
-// Inputs
-uint32_t front_ultrasound_distance;
-
-int get_ultrasound_distance();
+float get_ultrasound_distance_cm();
 
 void setup()
 {
@@ -36,10 +33,35 @@ void setup()
 
     left_servo.writeMicroseconds(LEFT_STATIONARY);
     right_servo.writeMicroseconds(RIGHT_STATIONARY);
-
 }
 
 void loop()
 {
-    get_ultrasound_distance();
+}
+
+long microsecondsToCentimeters(long microseconds) {
+  // The speed of sound is 340 m/s or 29 microseconds per centimeter.
+  // The ping travels out and back, so to find the distance of the object we
+  // take half of the distance travelled.
+
+}
+
+float get_ultrasound_distance_cm()
+{
+    long duration;
+    float cm;
+    
+    pinMode(ultrasound_pin, OUTPUT);
+    
+    digitalWrite(ultrasound_pin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(ultrasound_pin, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(ultrasound_pin, LOW);
+    
+    pinMode(ultrasound_pin, INPUT);
+    duration = pulseIn(ultrasound_pin, HIGH);
+    
+    cm = duration / 29.0f / 2.0f;
+    return cm;
 }
