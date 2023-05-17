@@ -9,6 +9,8 @@
 #  define RIGHT_STATIONARY 1500
 #endif
 
+#define SWEEP_COUNT 10
+
 // Pins
 const int left_servo_pin         = 13;
 const int right_servo_pin        = 12;
@@ -29,8 +31,11 @@ static UltrasoundState ultrasound_state;
 //////////////////////////////////////////////////////////
 
 // Mounted servos
+
+// Components
 Servo left_servo;
 Servo right_servo;
+Servo ultrasound_servo;
 //////////////////////////////////
 
 
@@ -46,6 +51,7 @@ int Ultrasound_flag=0;
 int Ultrasound_angle_flag=0;
 //////////////////////////////
 
+void move_to_free_space();
 void setup()
 {
   Serial.begin(115200);//PIO monitoring budrate (needs to be set in platformio.ini as well)
@@ -124,6 +130,32 @@ void update_ultrasound_state(UltrasoundState *state)
     state->ultrasound_distance = get_ultrasound_distance_cm();
     state->angle = 0;
 }
+
+void move_to_free_space()
+{
+    float fov = 90.0f;
+    float distances[SWEEP_COUNT]; // Left to right
+
+    for (int i = 0; i < SWEEP_COUNT; i++)
+    {
+        update_ultrasound_state(&ultrasound_state);
+        distances[i] = ultrasound_state.distance;
+
+        float target_angle = 45.0f + (i * fov / SWEEP_COUNT);
+        
+        char buffer[256];
+        sprintf(buffer, "%d", (int)ultrasound_state.distance);
+        Serial.println(buffer);
+        
+        ultrasound_servo.write((int)target_angle);
+
+        delay(100);
+    }
+    
+    ultrasound_servo.write(45);
+    delay(500); // Delay so that the ultrasound servo has enough time to go back to the start position.
+}
+
 void loop()
 {
   update_ultrasound_state(&ultrasound_state);
