@@ -26,7 +26,9 @@ Servo right_servo;
 uint32_t front_ultrasound_distance;
 
 int get_ultrasound_distance();
-
+int IR_flag=0;
+int Ultrasound_flag=0;
+int Ultrasound_angle_flag=0;
 void setup()
 {
     Serial.begin(115200);
@@ -41,5 +43,47 @@ void setup()
 
 void loop()
 {
-    get_ultrasound_distance();
+  get_ultrasound_distance();
+  if(IR_flag && Ultrasound_flag){//mountain detected
+    
+  }else if(IR_flag && !Ultrasound_flag){//cliff or boundary detected
+
+  }else if(!IR_flag && Ultrasound_flag){//sample detected
+
+  }else{
+    forward(100);
+  }
+
+}
+void forward(int time)                       // Forward function
+{
+  left_servo.writeMicroseconds(1700);         // Left wheel counterclockwise
+  right_servo.writeMicroseconds(1300);        // Right wheel clockwise
+  delay(time);                               // Maneuver for time ms
+}
+
+void turnLeft(int time)                      // Left turn function
+{
+  left_servo.writeMicroseconds(1300);         // Left wheel clockwise
+  right_servo.writeMicroseconds(1300);        // Right wheel clockwise
+  delay(time);                               // Maneuver for time ms
+}
+
+void turnRight(int time)                     // Right turn function
+{
+  left_servo.writeMicroseconds(1700);         // Left wheel counterclockwise
+  right_servo.writeMicroseconds(1700);        // Right wheel counterclockwise
+  delay(time);                               // Maneuver for time ms
+}
+
+void backward(int time)                      // Backward function
+{
+  left_servo.writeMicroseconds(1300);         // Left wheel clockwise
+  right_servo.writeMicroseconds(1700);        // Right wheel counterclockwise
+  delay(time);                               // Maneuver for time ms
+}
+void sstop(int time){
+  left_servo.writeMicroseconds(1500);
+  right_servo.writeMicroseconds(1500);
+  delay(time);         // Left wheel clockwise
 }
