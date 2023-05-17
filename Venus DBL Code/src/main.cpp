@@ -9,6 +9,8 @@
 #  define RIGHT_STATIONARY 1500
 #endif
 
+#define SWEEP_COUNT 10
+
 // Pins
 const int left_servo_pin         = 13;
 const int right_servo_pin        = 12;
@@ -21,81 +23,42 @@ const int right_wheel_sensor_pin = 7;
 
 struct UltrasoundState
 {
-    float ultrasound_distance; // In centimeters.
-    float angle;               // In degrees.
+    float distance; // In centimeters.
+    float angle;    // In degrees.
 };
-
-void update_ultrasound_state();
 
 
 // Components
 Servo left_servo;
 Servo right_servo;
+Servo ultrasound_servo;
 
 UltrasoundState ultrasound_state;
 
-int get_ultrasound_distance();
-int IR_flag=0;
-int Ultrasound_flag=0;
-int Ultrasound_angle_flag=0;
+int IR_flag = 0;
+int Ultrasound_flag = 0;
+int Ultrasound_angle_flag = 0;
+
+// Ultrasound
+void update_ultrasound_state(UltrasoundState *state);
+
+// Movement
+void move_to_free_space();
+
 void setup()
 {
     Serial.begin(115200);
 
     left_servo.attach(left_servo_pin);
     right_servo.attach(right_servo_pin);
-
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
+    ultrasound_servo.attach(ultrasound_servo_pin);
 }
 
 void loop()
 {
-  get_ultrasound_distance();
-  if(IR_flag && Ultrasound_flag){//mountain detected
-    
-  }else if(IR_flag && !Ultrasound_flag){//cliff or boundary detected
-
-  }else if(!IR_flag && Ultrasound_flag){//sample detected
-
-  }else{
-    forward(100);
-  }
-
-    update_ultrasound_state(&ultrasound_state);
-}
-void forward(int time)                       // Forward function
-{
-  left_servo.writeMicroseconds(1700);         // Left wheel counterclockwise
-  right_servo.writeMicroseconds(1300);        // Right wheel clockwise
-  delay(time);                               // Maneuver for time ms
+    move_to_free_space();
 }
 
-void turnLeft(int time)                      // Left turn function
-{
-  left_servo.writeMicroseconds(1300);         // Left wheel clockwise
-  right_servo.writeMicroseconds(1300);        // Right wheel clockwise
-  delay(time);                               // Maneuver for time ms
-}
-
-void turnRight(int time)                     // Right turn function
-{
-  left_servo.writeMicroseconds(1700);         // Left wheel counterclockwise
-  right_servo.writeMicroseconds(1700);        // Right wheel counterclockwise
-  delay(time);                               // Maneuver for time ms
-}
-
-void backward(int time)                      // Backward function
-{
-  left_servo.writeMicroseconds(1300);         // Left wheel clockwise
-  right_servo.writeMicroseconds(1700);        // Right wheel counterclockwise
-  delay(time);                               // Maneuver for time ms
-}
-void sstop(int time){
-  left_servo.writeMicroseconds(1500);
-  right_servo.writeMicroseconds(1500);
-  delay(time);         // Left wheel clockwise
-}
 float get_ultrasound_distance_cm()
 {
     long duration;
@@ -120,4 +83,29 @@ void update_ultrasound_state(UltrasoundState *state)
 {
     state->distance = get_ultrasound_distance_cm();
     state->angle = 0;
+}
+
+void move_to_free_space()
+{
+    float fov = 90.0f;
+    float distances[SWEEP_COUNT]; // Left to right
+
+    for (int i = 0; i < SWEEP_COUNT; i++)
+    {
+        update_ultrasound_state(&ultrasound_state);
+        distances[i] = ultrasound_state.distance;
+
+        float target_angle = 45.0f + (i * fov / SWEEP_COUNT);
+        
+        char buffer[256];
+        sprintf(buffer, "%d", (int)ultrasound_state.distance);
+        Serial.println(buffer);
+        
+        ultrasound_servo.write((int)target_angle);
+
+        delay(100);
+    }
+    
+    ultrasound_servo.write(45);
+    delay(500); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
