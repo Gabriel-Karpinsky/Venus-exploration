@@ -18,11 +18,22 @@ const int ultrasound_pin         = 9;
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 
+
+struct UltrasoundState
+{
+    float ultrasound_distance; // In centimeters.
+    float angle;               // In degrees.
+};
+
+void update_ultrasound_state();
+
+
 // Components
 Servo left_servo;
 Servo right_servo;
 
-float get_ultrasound_distance_cm();
+UltrasoundState ultrasound_state;
+
 
 void setup()
 {
@@ -37,6 +48,7 @@ void setup()
 
 void loop()
 {
+    update_ultrasound_state(&ultrasound_state);
 }
 
 float get_ultrasound_distance_cm()
@@ -57,4 +69,10 @@ float get_ultrasound_distance_cm()
     
     cm = duration / 29.0f / 2.0f;
     return cm;
+}
+
+void update_ultrasound_state(UltrasoundState *state)
+{
+    state->distance = get_ultrasound_distance_cm();
+    state->angle = 0;
 }
