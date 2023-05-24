@@ -24,10 +24,13 @@ const int right_wheel_sensor_pin = 7;
 //Ultrasound struct declaration used to update ultrasound data globaly
 struct UltrasoundState
 {
-  float ultrasound_distance; // In centimeters.
-  float angle;               // In degrees.
+    float fov;
+    
+    float ultrasound_distance;    // In centimeters.
+    float angle;                  // In degrees.
+    
+    float distances[SWEEP_COUNT]; // Sweep left to right
 };
-static UltrasoundState ultrasound_state;
 //////////////////////////////////////////////////////////
 
 // Mounted servos
@@ -41,9 +44,14 @@ Servo ultrasound_servo;
 
 // forward declarations
 void update_ultrasound_state(UltrasoundState *state);
-int get_ultrasound_distance();
+int  get_ultrasound_distance();
 void turnLeftAngle(int angle, int time);
+void move_to_free_space();
+
 ///////////////////////////////////////
+
+// State
+static UltrasoundState ultrasound_state;
 
 // Decision making flags 
 int IR_flag=0;
@@ -51,18 +59,23 @@ int Ultrasound_flag=0;
 int Ultrasound_angle_flag=0;
 //////////////////////////////
 
-void move_to_free_space();
+
 void setup()
 {
-  Serial.begin(115200);//PIO monitoring budrate (needs to be set in platformio.ini as well)
+    Serial.begin(115200); //PIO monitoring budrate (needs to be set in platformio.ini as well)
 
-  left_servo.attach(left_servo_pin);
-  right_servo.attach(right_servo_pin);
+    left_servo.attach(left_servo_pin);
+    right_servo.attach(right_servo_pin);
+    ultrasound_servo.attach(ultrasound_servo_pin);
+    
+    pinMode(left_wheel_sensor_pin, INPUT);
+    pinMode(right_wheel_sensor_pin, INPUT);
 
-  left_servo.writeMicroseconds(LEFT_STATIONARY);
-  right_servo.writeMicroseconds(RIGHT_STATIONARY);
-  pinMode(left_wheel_sensor_pin, INPUT);
-  pinMode(right_wheel_sensor_pin, INPUT);
+    ultrasound_state = {.fov = 90.0f};
+    
+    left_servo.writeMicroseconds(LEFT_STATIONARY);
+    right_servo.writeMicroseconds(RIGHT_STATIONARY);
+
 }
 
 
@@ -125,49 +138,46 @@ float get_ultrasound_distance_cm()
     return cm;
 }
 
-void update_ultrasound_state(UltrasoundState *state)
+void sweep_ultrasound(UltrasoundState *state)
 {
-    state->ultrasound_distance = get_ultrasound_distance_cm();
-    state->angle = 0;
-}
-
-void move_to_free_space()
-{
-    float fov = 90.0f;
-    float distances[SWEEP_COUNT]; // Left to right
-
+    float fov = state->fov;
+    
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        update_ultrasound_state(&ultrasound_state);
-        distances[i] = ultrasound_state.distance;
+        float distance = get_ultrasound_distance_cm();
+        state->distances[i] = distance;
 
         float target_angle = 45.0f + (i * fov / SWEEP_COUNT);
         
         char buffer[256];
-        sprintf(buffer, "%d", (int)ultrasound_state.distance);
+        sprintf(buffer, "%d cm @ angle %d with FOV %d", (int)distance,
+                (int)target_angle, (int)fov);
+        
         Serial.println(buffer);
         
         ultrasound_servo.write((int)target_angle);
-
-        delay(100);
+        
+        delay(50);
     }
     
-    ultrasound_servo.write(45);
+    ultrasound_servo.write(90 - (int)fov / 2);
     delay(500); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
 void loop()
 {
-  update_ultrasound_state(&ultrasound_state);
-  if(IR_flag && Ultrasound_flag){//mountain detected
-    printf("mountain");
-  }else if(IR_flag && !Ultrasound_flag){//cliff or boundary detected
-    turnLeftAngle(45,100);
-    wait(100);
-  }else if(!IR_flag && Ultrasound_flag){//sample detected
-    printf("balls");
-  }else{
-    turnLeftAngle(45,1000);
-    wait(5000);
-  } 
+    sweep_ultrasound(&ultrasound_state);
+
+    
+    if(IR_flag && Ultrasound_flag){//mountain detected
+        printf("mountain");
+    }else if(IR_flag && !Ultrasound_flag){//cliff or boundary detected
+        turnLeftAngle(45,100);
+        wait(100);
+    }else if(!IR_flag && Ultrasound_flag){//sample detected
+        printf("balls");
+    }else{
+//        turnLeftAngle(45,1000);
+//        wait(5000);
+    } 
 }
