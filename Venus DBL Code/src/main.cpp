@@ -4,13 +4,15 @@
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460
 #  define RIGHT_STATIONARY 1520
+#  define GRIPPER_CLOSE 0
 #  define GRIPPER_OPEN 80
 #  define GRIPPER_UP 180
 #else
 #  define LEFT_STATIONARY  1500
 #  define RIGHT_STATIONARY 1500
-#  define GRIPPER_OPEN 70
-#  define GRIPPER_UP 170
+#  define GRIPPER_CLOSE 70
+#  define GRIPPER_OPEN 170
+#  define GRIPPER_UP 0
 #endif
 
 #define SWEEP_COUNT 10
@@ -114,6 +116,7 @@ void loop()
         wait(100);
     }else if(!IR_flag2 && Ultrasound_flag){//sample detected
         printf("sample\n");
+        gripper_controll(gripper_state,1,1);//close gripper and UP gripper
     }else{
 //        turnLeftAngle(45,1000);
 //        wait(5000);
@@ -224,19 +227,23 @@ void IR_sensor1_scan(){
 
 int gripper_controll(Gripper status, int grip, int updown){
   //Servo called: gripperServo
-  //a=robot,b=action (0==close,1==open,2==up)
-  if(status.engaged==0 && grip == 1){
-    //if(b==0) gripperServo.write(70);
-    else if (b==1) gripperServo.write(170);
-    else if (b==2) gripperServo.write(0);
+
+  if(status.engaged == 0 && grip == 1){
+    gripperServo.write(GRIPPER_CLOSE);
+    delay(2000);
+  }else if(status.engaged==1 && grip == 0){
+    gripperServo.write(GRIPPER_OPEN);
     delay(2000);
   }
-  else if(a==1){
-    if(b==0) gripperServo.write(0);
-    else if (b==1) gripperServo.write(80);
-    else if (b==2) gripperServo.write(180);
+
+  if(status.up == 0 && updown == 1){
+    gripperServo.write(GRIPPER_UP);
+    delay(2000);
+  }else if(status.up == 1 && updown == 0){ //FIXXXXXXXXXX ???????
+    gripperServo.write(GRIPPER_UP); //SHOULD BE GRIPPER_DOWN
     delay(2000);
   }
+  
 }
 
 
