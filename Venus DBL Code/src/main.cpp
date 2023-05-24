@@ -11,6 +11,8 @@
 
 #define SWEEP_COUNT 10
 
+#define INT16_MAX 65535
+
 // Pins
 const int left_servo_pin         = 13;
 const int right_servo_pin        = 12;
@@ -26,10 +28,8 @@ struct UltrasoundState
 {
     float fov;
     
-    float ultrasound_distance;    // In centimeters.
-    float angle;                  // In degrees.
-    
     float distances[SWEEP_COUNT]; // Sweep left to right
+    float angles[SWEEP_COUNT];
 };
 //////////////////////////////////////////////////////////
 
@@ -85,6 +85,7 @@ void forward(int time)                       // Forward function
   right_servo.writeMicroseconds(1300);        // Right wheel clockwise
   delay(time);                               // Maneuver for time ms
 }
+
 void turnLeftAngle(int angle, int time){
   left_servo.write(angle);      // Left wheel counterclockwise??? with given angle
   right_servo.write(angle);
@@ -147,7 +148,7 @@ void sweep_ultrasound(UltrasoundState *state)
         float distance = get_ultrasound_distance_cm();
         state->distances[i] = distance;
 
-        float target_angle = 45.0f + (i * fov / SWEEP_COUNT);
+        float target_angle = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
         
         char buffer[256];
         sprintf(buffer, "%d cm @ angle %d with FOV %d", (int)distance,
@@ -157,17 +158,51 @@ void sweep_ultrasound(UltrasoundState *state)
         
         ultrasound_servo.write((int)target_angle);
         
-        delay(50);
+        delay(150);
+    }
+
+    for (int i = 0; i < SWEEP_COUNT; i++)
+    {
+        state->angles[i] = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
     }
     
     ultrasound_servo.write(90 - (int)fov / 2);
-    delay(500); // Delay so that the ultrasound servo has enough time to go back to the start position.
+    delay(400); // Delay so that the ultrasound servo has enough time to go back to the start position.
+}
+
+int find_closest_angle(UltrasoundState *state)
+{
+    uint16_t closest = INT16_MAX;
+    int closest_index = -1;
+    
+    for (int i = 0; i < SWEEP_COUNT; i++)
+    {
+        if (state->distances[i] < closest)
+        {
+            closest = state->distances[i];
+            closest_index = i;
+        }
+    }
+    
+    return state->angles[closest_index];
+}
+
+// Positive angle is anti-clockwise
+void turn_degrees(float theta)
+{
+    if (theta > 0)
+    {
+        turnRight(0);
+    }
 }
 
 void loop()
 {
     sweep_ultrasound(&ultrasound_state);
+    find_closest_angle(&ultrasound_state);
 
+    turn_degrees(90);
+    delay(2000);
     
     if(IR_flag && Ultrasound_flag){//mountain detected
         printf("mountain");
