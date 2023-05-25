@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Servo.h>
 
+/* Robot Behaviour Settings */
+
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460  // These may be incorrect and need to be retuned again.
 #  define RIGHT_STATIONARY 1520
@@ -17,7 +19,7 @@
 
 #define SWEEP_COUNT 10
 
-#define UINT16_MAX 65535
+/* End Robot Behaviour Settings*/
 
 // Pins
 const int left_servo_pin         = 13;
@@ -29,7 +31,7 @@ const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 ////////////////////////////////////////////////////////
 
-//Ultrasound struct declaration used to update ultrasound data globaly
+// Per ultrasound sensor data structure. Holds an array of distances found by sweeping.
 struct UltrasoundSensor
 {
     float fov;
@@ -118,7 +120,7 @@ void setup()
     pinMode(right_wheel_sensor_pin, INPUT);
 
     ultrasound_sensor = {.fov = 90.0f};
-    gripper_state     = {.engaged = 0, .up = 0};
+    gripper_state     = {.engaged = 0, .up = 0}; // TODO: It is already initialized to zero because static global.
 
 
     left_servo.writeMicroseconds(LEFT_STATIONARY);
@@ -173,6 +175,7 @@ void loop()
     
 }
 
+/////////////////////////////////////////
 
 /*
   Left wheel counterclockwise  -> left_servo.writeMicroseconds(1700);
@@ -276,7 +279,7 @@ void sweep_ultrasound(UltrasoundSensor *state)
 
         ultrasound_servo.write((int)target_angle);
 
-        delay(150);
+        delay(150); // TODO: This delay and the one a couple lines down need to be fine-tuned.
     }
 
     for (int i = 0; i < SWEEP_COUNT; i++)
