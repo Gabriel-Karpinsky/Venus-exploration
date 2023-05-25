@@ -2,7 +2,7 @@
 #include <Servo.h>
 
 #ifdef WHACKY_ROBOT
-#  define LEFT_STATIONARY  1460
+#  define LEFT_STATIONARY  1460  // These may be incorrect and need to be retuned again.
 #  define RIGHT_STATIONARY 1520
 #  define GRIPPER_CLOSE 0
 #  define GRIPPER_OPEN 80
@@ -30,7 +30,7 @@ const int right_wheel_sensor_pin = 7;
 ////////////////////////////////////////////////////////
 
 //Ultrasound struct declaration used to update ultrasound data globaly
-struct UltrasoundState
+struct UltrasoundSensor
 {
     float fov;
 
@@ -58,34 +58,51 @@ Servo gripperServo;
 
 // Ultrasound
 float get_ultrasound_distance_cm();
-void  sweep_ultrasound(UltrasoundState *state);
-int   find_closest_angle(UltrasoundState *state);
+void  sweep_ultrasound(UltrasoundSensor *state);
+int   find_closest_angle(UltrasoundSensor *state);
 
 
 // Movement
 void  forward(int time);
+void  backward(int time);
 void  turnLeft(int time);
 void  turnRight(int time);
-void  backward(int time);
-void  halt_movement(int time);
+void  halt_movement();
 
-void  turnLeftAngle(int angle, int time);
 void  turn_degrees(float theta);
 
+// Other controls
+void gripper_control(Gripper status, int grip, int updown);
 
 /////////////////////////////////////////
 
-// State
-static UltrasoundState ultrasound_state;
+// Sensor data
+static UltrasoundSensor ultrasound_sensor;
 static Gripper gripper_state;
 
+
 // Decision making flags
+struct Flags
+{
+    bool BoundaryIR; // Boundary or cliff
+    bool FrontIR;    // Mountain or sample
+    bool TowerIR;    // Tower
+
+    bool Ultrasound; // Set if passes threshold
+};
+
+static Flags flags;
+
+// TODO: Clarification still needed on flags.
+#if 0
 int IR_flag1=0; //cliff or boundary
 int IR_flag2=0; //mountain or sample
 int IR_flag3=0; //Tower
 
 int Ultrasound_flag=0;
 int Ultrasound_angle_flag=0;
+#endif
+
 /////////////////////////////////////////
 
 
@@ -100,74 +117,75 @@ void setup()
     pinMode(left_wheel_sensor_pin, INPUT);
     pinMode(right_wheel_sensor_pin, INPUT);
 
-    ultrasound_state = {.fov = 90.0f};
-    gripper_state = {.engaged = 0, .up = 0};
+    ultrasound_sensor = {.fov = 90.0f};
+    gripper_state     = {.engaged = 0, .up = 0};
 
 
     left_servo.writeMicroseconds(LEFT_STATIONARY);
     right_servo.writeMicroseconds(RIGHT_STATIONARY);
 
 }
+
 void loop()
 {
-    sweep_ultrasound(&ultrasound_state);
+    sweep_ultrasound(&ultrasound_sensor);
+
+    
+    bool boundary = flags.BoundaryIR;
+    bool mountain = flags.BoundaryIR && flags.Ultrasound;
+
+    if (boundary)
+    {
+        Serial.println("Boundary detected.");
+        turn_degrees(90);
+    }
+
+    if (mountain)
+    {
+        Serial.println("Mountain detected.");
+    }
+    
 
 
-    if(IR_flag2 && Ultrasound_flag){//mountain detected
+    // TODO: #if 0'ed for now, because there could be a better way of doing this.
+#if 0
+    if(IR_flag2 && Ultrasound_flag)       // mountain detected
+    {
         printf("mountain\n");
-    }else if(IR_flag1 && !Ultrasound_flag){//cliff or boundary detected
+    }
+    else if(IR_flag1 && !Ultrasound_flag) // cliff or boundary detected
+    {
         printf("cliff or boundary\n");
         turnLeftAngle(45,100);
-        halt_movement(100);
-    }else if(!IR_flag2 && Ultrasound_flag){//sample detected
-        printf("sample\n");
-        gripper_controll(gripper_state,1,1);//close gripper and UP gripper
-    }else{
-//        turnLeftAngle(45,1000);
-//        halt_movement(5000);
+        halt_movement();
     }
+    else if(!IR_flag2 && Ultrasound_flag) // sample detected
+    {
+        printf("sample\n");
+        gripper_control(gripper_state,1,1);// close gripper and UP gripper
+    }
+    else
+    {
+        turnLeftAngle(45,1000);
+        halt_movement();
+    }
+#endif
+    
 }
 
 
 /*
   Left wheel counterclockwise  -> left_servo.writeMicroseconds(1700);
   Left wheel clockwise         -> left_servo.writeMicroseconds(1300);
-  Right wheel clockwise        -> right_servo.writeMicroseconds(1300);
   Right wheel counterclockwise -> right_servo.writeMicroseconds(1300);
+  Right wheel clockwise        -> right_servo.writeMicroseconds(1700);
 */
 void forward(int time)
 {
     left_servo.writeMicroseconds(1700);
     right_servo.writeMicroseconds(1300);
     delay(time);
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
-}
-
-void turnLeftAngle(int angle, int time){
-    left_servo.write(angle);
-    right_servo.write(angle);
-
-    delay(time);
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY );
-}
-void turnLeft(int time)
-{
-    left_servo.writeMicroseconds(1300);
-    right_servo.writeMicroseconds(1300);
-    delay(time);
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
-}
-
-void turnRight(int time)
-{
-    left_servo.writeMicroseconds(1700);
-    right_servo.writeMicroseconds(1700);
-    delay(time);
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
+    halt_movement();
 }
 
 void backward(int time)
@@ -175,15 +193,48 @@ void backward(int time)
     left_servo.writeMicroseconds(1300);
     right_servo.writeMicroseconds(1700);
     delay(time);
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
+    halt_movement();
 }
-void halt_movement(int time)
+
+void turnLeft(int time)
+{
+    left_servo.writeMicroseconds(1300);
+    right_servo.writeMicroseconds(1300);
+    delay(time);
+    halt_movement();
+}
+
+void turnRight(int time)
+{
+    left_servo.writeMicroseconds(1700);
+    right_servo.writeMicroseconds(1700);
+    delay(time);
+    halt_movement();
+}
+
+void halt_movement()
 {
     left_servo.writeMicroseconds(LEFT_STATIONARY);
     right_servo.writeMicroseconds(RIGHT_STATIONARY);
-    delay(time);
+}
 
+// Positive angle is anti-clockwise looking top-down
+void turn_degrees(float theta)
+{
+    // Fine tune this, and the rest should work since angle-time relation is linear.
+    float rotation_constant = 1;
+
+    halt_movement();
+    
+    if (theta > 0)
+    {
+        turnLeft(theta * rotation_constant);
+    }
+    else if (theta < 0)
+    {
+        theta = -theta;
+        turnRight(theta * rotation_constant);
+    }
 }
 
 float get_ultrasound_distance_cm()
@@ -206,7 +257,7 @@ float get_ultrasound_distance_cm()
     return cm;
 }
 
-void sweep_ultrasound(UltrasoundState *state)
+void sweep_ultrasound(UltrasoundSensor *state)
 {
     float fov = state->fov;
 
@@ -237,7 +288,7 @@ void sweep_ultrasound(UltrasoundState *state)
     delay(400); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
-int find_closest_angle(UltrasoundState *state)
+int find_closest_angle(UltrasoundSensor *state)
 {
     uint16_t closest = UINT16_MAX;
     int closest_index = -1;
@@ -254,42 +305,15 @@ int find_closest_angle(UltrasoundState *state)
     return state->angles[closest_index];
 }
 
-// Positive angle is anti-clockwise
-void turn_degrees(float theta)
+void IR_sensor1_scan()
 {
-    if (theta > 0)
-    {
-        turnRight(0);
-    }
-}
-void IR_sensor1_scan(){
-    //IR sensor code
-    //if cliff or boundary detected
+    // IR sensor code
+    // if cliff or boundary detected
     printf("balls");
 }
 
-void loop()
+void gripper_control(Gripper status, int grip, int updown)
 {
-    sweep_ultrasound(&ultrasound_state);
-    find_closest_angle(&ultrasound_state);
-
-    turn_degrees(90);
-    delay(2000);
-
-    if(IR_flag && Ultrasound_flag){//mountain detected
-        printf("mountain");
-    }else if(IR_flag && !Ultrasound_flag){//cliff or boundary detected
-        turnLeftAngle(45,100);
-        halt_movement(100);
-    }else if(!IR_flag && Ultrasound_flag){//sample detected
-        printf("balls");
-    }else{
-//        turnLeftAngle(45,1000);
-//        halt_movement(5000);
-    }
-}
-
-int gripper_control(Gripper status, int grip, int updown){
     //Servo called: gripperServo
 
     if(status.engaged == 0 && grip == 1){
