@@ -17,9 +17,12 @@
 #  define GRIPPER_UP 0
 #endif
 
+// TODO: Fine tune this, and the rest should work since angle-time relation should be linear.
+const float ROTATION_CONST = 1.0f;
+
 #define SWEEP_COUNT 10
 
-/* End Robot Behaviour Settings*/
+/* End Robot Behaviour Settings */
 
 // Pins
 const int left_servo_pin         = 13;
@@ -61,8 +64,7 @@ Servo gripperServo;
 // Ultrasound
 float get_ultrasound_distance_cm();
 void  sweep_ultrasound(UltrasoundSensor *state);
-int   find_closest_angle(UltrasoundSensor *state);
-
+float find_closest_distance(UltrasoundSensor *state, float *angle);
 
 // Movement
 void  forward(int time);
@@ -130,11 +132,25 @@ void setup()
 
 void loop()
 {
+    // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
+    flags = {};
+    
     sweep_ultrasound(&ultrasound_sensor);
+
+    float closest_angle;
+    float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
+
+    float threshold = 15.0f;
+    if (closest_distance < threshold)
+    {
+        flags.Ultrasound = true;
+    }
 
     
     bool boundary = flags.BoundaryIR;
-    bool mountain = flags.BoundaryIR && flags.Ultrasound;
+    bool mountain = flags.FrontIR && flags.Ultrasound;
+
+    bool just_ultrasound = flags.Ultrasound;
 
     if (boundary)
     {
@@ -146,7 +162,12 @@ void loop()
     {
         Serial.println("Mountain detected.");
     }
-    
+
+    if (just_ultrasound)
+    {
+        turn_degrees(45);
+        forward(3000);
+    }
 
 
     // TODO: #if 0'ed for now, because there could be a better way of doing this.
@@ -224,19 +245,16 @@ void halt_movement()
 // Positive angle is anti-clockwise looking top-down
 void turn_degrees(float theta)
 {
-    // Fine tune this, and the rest should work since angle-time relation is linear.
-    float rotation_constant = 1;
-
     halt_movement();
     
     if (theta > 0)
     {
-        turnLeft(theta * rotation_constant);
+        turnLeft(theta * ROTATION_CONST);
     }
     else if (theta < 0)
     {
         theta = -theta;
-        turnRight(theta * rotation_constant);
+        turnRight(theta * ROTATION_CONST);
     }
 }
 
@@ -291,9 +309,10 @@ void sweep_ultrasound(UltrasoundSensor *state)
     delay(400); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
-int find_closest_angle(UltrasoundSensor *state)
+// Returns the angle at which this distance was sampled through second parameter.
+float find_closest_distance(UltrasoundSensor *state, float *angle)
 {
-    uint16_t closest = UINT16_MAX;
+    float closest = 10000; // Just some large number.
     int closest_index = -1;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
@@ -305,7 +324,11 @@ int find_closest_angle(UltrasoundSensor *state)
         }
     }
 
-    return state->angles[closest_index];
+    // assert(closest_index > 0);
+
+    *angle = state->angles[closest_index];
+    
+    return closest;
 }
 
 void IR_sensor1_scan()
