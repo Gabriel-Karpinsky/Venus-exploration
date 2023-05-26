@@ -3,30 +3,34 @@
 
 /* Robot Behaviour Settings */
 
+// #define WHACKY_ROBOT
+
 #ifdef WHACKY_ROBOT
-#  define LEFT_STATIONARY  1460  // These may be incorrect and need to be retuned again.
-#  define RIGHT_STATIONARY 1520
+#  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
+#  define RIGHT_STATIONARY 1510
+#  define ROTATION_TIME 1600.0f
 #  define GRIPPER_CLOSE 0
 #  define GRIPPER_OPEN 80
 #  define GRIPPER_UP 180
 #else
 #  define LEFT_STATIONARY  1500
 #  define RIGHT_STATIONARY 1500
+#  define ROTATION_TIME 1300.0f
 #  define GRIPPER_CLOSE 70
 #  define GRIPPER_OPEN 170
 #  define GRIPPER_UP 0
 #endif
 
 // TODO: Fine tune this, and the rest should work since angle-time relation should be linear.
-const float ROTATION_CONST = 1.0f;
+const float ROTATION_CONST = ROTATION_TIME / 90.0f;
 
 #define SWEEP_COUNT 10
 
 /* End Robot Behaviour Settings */
 
 // Pins
-const int left_servo_pin         = 13;
-const int right_servo_pin        = 12;
+const int right_servo_pin        = 13;
+const int left_servo_pin         = 12;
 const int ultrasound_servo_pin   = 11;
 const int claw_servo_pin         = 10;
 const int ultrasound_pin         = 9;
@@ -39,7 +43,7 @@ struct UltrasoundSensor
 {
     float fov;
 
-    float distances[SWEEP_COUNT]; // Sweep left to right
+    float distances[SWEEP_COUNT]; // Sweep right to left
     float angles[SWEEP_COUNT];
 };
 
@@ -116,6 +120,7 @@ void setup()
 
     left_servo.attach(left_servo_pin);
     right_servo.attach(right_servo_pin);
+    
     ultrasound_servo.attach(ultrasound_servo_pin);
 
     pinMode(left_wheel_sensor_pin, INPUT);
@@ -132,6 +137,30 @@ void setup()
 
 void loop()
 {
+    delay(4000);
+    turn_degrees(90);
+    delay(3000);
+    turn_degrees(180);
+//    halt_movement();
+//    delay(2000);
+    
+#if 0
+    static int test = 1300;
+    
+    char buffer[256];
+    sprintf(buffer, "microseconds: %d", test);
+
+    Serial.println(buffer);
+
+    left_servo.writeMicroseconds(test);
+    right_servo.writeMicroseconds(RIGHT_STATIONARY);
+
+    delay(3000);
+
+    test += 50;
+#endif
+
+#if 0
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
     
@@ -152,6 +181,13 @@ void loop()
 
     bool just_ultrasound = flags.Ultrasound;
 
+    char buffer[256];
+    sprintf(buffer, "%d cm @ angle %d", (int)closest_distance,
+            (int)closest_angle);
+
+    Serial.println(buffer);
+
+
     if (boundary)
     {
         Serial.println("Boundary detected.");
@@ -165,9 +201,10 @@ void loop()
 
     if (just_ultrasound)
     {
-        turn_degrees(45);
+        turn_degrees(-closest_angle);
         forward(3000);
     }
+#endif
 
 
     // TODO: #if 0'ed for now, because there could be a better way of doing this.
@@ -289,24 +326,18 @@ void sweep_ultrasound(UltrasoundSensor *state)
 
         float target_angle = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
 
-        char buffer[256];
-        sprintf(buffer, "%d cm @ angle %d with FOV %d", (int)distance,
-                (int)target_angle, (int)fov);
-
-        Serial.println(buffer);
-
         ultrasound_servo.write((int)target_angle);
 
-        delay(150); // TODO: This delay and the one a couple lines down need to be fine-tuned.
+        delay(200); // TODO: This delay and the one a couple lines down need to be fine-tuned.
     }
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        state->angles[i] = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        state->angles[i] = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
     }
 
     ultrasound_servo.write(90 - (int)fov / 2);
-    delay(400); // Delay so that the ultrasound servo has enough time to go back to the start position.
+    delay(600); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
 // Returns the angle at which this distance was sampled through second parameter.
