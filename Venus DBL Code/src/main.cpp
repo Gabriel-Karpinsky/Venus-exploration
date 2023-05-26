@@ -18,13 +18,15 @@
 #define SWEEP_COUNT 10
 
 // Pins
-const int left_servo_pin         = 13;
-const int right_servo_pin        = 12;
+const int left_servo_pin         = 12;
+const int right_servo_pin        = 13;
 const int ultrasound_servo_pin   = 11;
 const int claw_servo_pin         = 10;
 const int ultrasound_pin         = 9;
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
+//Analog pins
+const int IR_sensor_pin1= A0;
 ////////////////////////////////////////////////////////
 
 //Ultrasound struct declaration used to update ultrasound data globaly
@@ -38,7 +40,7 @@ struct UltrasoundState
     float distances[SWEEP_COUNT]; // Sweep left to right
 };
 
-struct Gripper //🦶 🍆😜💦 💀 Zamn girl show me them grippers 
+struct Gripper //🦶🍆😜💦💀 Zamn girl show me them grippers 
 {
   int engaged;
   int up;
@@ -65,7 +67,9 @@ void forward(int time);
 void turnLeft(int time);
 void turnRight(int time);
 void backward(int time);
+void gripper_controll(Gripper status, int grip, int updown);
 void wait(int time);
+void IR_sensor1_scan();
 float get_ultrasound_distance_cm();
 void sweep_ultrasound(UltrasoundState *state);
 ///////////////////////////////////////
@@ -91,6 +95,7 @@ void setup()
     left_servo.attach(left_servo_pin);
     right_servo.attach(right_servo_pin);
     ultrasound_servo.attach(ultrasound_servo_pin);
+  
     
     pinMode(left_wheel_sensor_pin, INPUT);
     pinMode(right_wheel_sensor_pin, INPUT);
@@ -101,25 +106,29 @@ void setup()
     
     left_servo.writeMicroseconds(LEFT_STATIONARY);
     right_servo.writeMicroseconds(RIGHT_STATIONARY);
-
+    gripperServo.write(GRIPPER_UP);
 }
+
 void loop()
 {
     sweep_ultrasound(&ultrasound_state);
-
-    
+    IR_sensor1_scan();
+    //Serial.println(Ultrasound_flag);
+    //Serial.println(IR_flag1);
     if(IR_flag2 && Ultrasound_flag){//mountain detected
-        printf("mountain\n");
+        Serial.println("mountain\n");
     }else if(IR_flag1 && !Ultrasound_flag){//cliff or boundary detected
-        printf("cliff or boundary\n");
-        turnLeftAngle(45,100);
-        wait(100);
+        Serial.println("cliff or boundary\n");
+        turnLeft(500);
+        //wait(100);
     }else if(!IR_flag2 && Ultrasound_flag){//sample detected
-        printf("sample\n");
+        Serial.println("sample\n");
+        //MOVE TO SAMPLE//
         gripper_controll(gripper_state,1,1);//close gripper and UP gripper
     }else{
-//        turnLeftAngle(45,1000);
-//        wait(5000);
+        Serial.println("nothing\n");
+        forward(500);
+       //wait(5000);
     } 
 }
 
@@ -208,7 +217,7 @@ void sweep_ultrasound(UltrasoundState *state)
         sprintf(buffer, "%d cm @ angle %d with FOV %d", (int)distance,
                 (int)target_angle, (int)fov);
         
-        Serial.println(buffer);
+        //Serial.println(buffer);
         
         ultrasound_servo.write((int)target_angle);
         
@@ -221,11 +230,16 @@ void sweep_ultrasound(UltrasoundState *state)
 void IR_sensor1_scan(){
     //IR sensor code
     //if cliff or boundary detected
-    printf("balls");
-
+    int IR_sensor1_value = analogRead(IR_sensor_pin1);
+    Serial.println(IR_sensor1_value);
+    if(IR_sensor1_value==0){
+        IR_flag1 = 1;
+    }else{
+        IR_flag1 = 0;
+    }
 }
 
-int gripper_controll(Gripper status, int grip, int updown){
+void gripper_controll(Gripper status, int grip, int updown){
   //Servo called: gripperServo
 
   if(status.engaged == 0 && grip == 1){
