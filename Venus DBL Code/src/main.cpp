@@ -65,7 +65,7 @@ Servo gripperServo;
 /////////////////////////////////////////
 
 // forward declarations
-void update_ultrasound_state(UltrasoundState *state);
+//void update_ultrasound_state(UltrasoundState *state);
 int  get_ultrasound_distance();
 void turnLeftAngle(int angle, int time);
 void move_to_free_space();
@@ -112,7 +112,7 @@ struct Flags
 static Flags flags;
 
 // TODO: Clarification still needed on flags.
-#if 0
+#if 1
 int IR_flag1=0; //cliff or boundary
 int IR_flag2=0; //mountain or sample
 int IR_flag3=0; //Tower
@@ -145,11 +145,10 @@ void setup()
     gripperServo.write(GRIPPER_UP);
 }
 
-}
 
 void loop()
 {
-    sweep_ultrasound(&ultrasound_state);
+    sweep_ultrasound(&ultrasound_sensor);
     IR_sensor1_scan();
     //Serial.println(Ultrasound_flag);
     //Serial.println(IR_flag1);
@@ -168,6 +167,7 @@ void loop()
         forward(500);
        //wait(5000);
     } 
+#if 0
     delay(4000);
     turn_degrees(90);
     delay(3000);
@@ -175,7 +175,7 @@ void loop()
 //    halt_movement();
 //    delay(2000);
     
-#if 0
+
     static int test = 1300;
     
     char buffer[256];
