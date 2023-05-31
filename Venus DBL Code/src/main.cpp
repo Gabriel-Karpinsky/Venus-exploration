@@ -3,12 +3,12 @@
 
 /* Robot Behaviour Settings */
 
-// #define WHACKY_ROBOT
+#define WHACKY_ROBOT
 
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
 #  define RIGHT_STATIONARY 1510
-#  define ROTATION_TIME 1600.0f
+#  define ROTATION_TIME 900.0f
 #  define GRIPPER_CLOSE 0
 #  define GRIPPER_OPEN 80
 #  define GRIPPER_UP 180
@@ -137,12 +137,16 @@ void setup()
 
 void loop()
 {
-    delay(4000);
+#if 0
+    delay(3000);
     turn_degrees(90);
     delay(3000);
     turn_degrees(180);
+    delay(3000);
+    turn_degrees(360);
 //    halt_movement();
 //    delay(2000);
+#endif
     
 #if 0
     static int test = 1300;
@@ -160,7 +164,7 @@ void loop()
     test += 50;
 #endif
 
-#if 0
+#if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
     
@@ -186,7 +190,7 @@ void loop()
             (int)closest_angle);
 
     Serial.println(buffer);
-
+    
 
     if (boundary)
     {
@@ -328,22 +332,23 @@ void sweep_ultrasound(UltrasoundSensor *state)
 
         ultrasound_servo.write((int)target_angle);
 
-        delay(200); // TODO: This delay and the one a couple lines down need to be fine-tuned.
+        delay(100); // TODO: This delay and the one a couple lines down need to be fine-tuned.
     }
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        state->angles[i] = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        float t = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        state->angles[i] = t;
     }
 
     ultrasound_servo.write(90 - (int)fov / 2);
-    delay(600); // Delay so that the ultrasound servo has enough time to go back to the start position.
+    delay(700); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
 // Returns the angle at which this distance was sampled through second parameter.
 float find_closest_distance(UltrasoundSensor *state, float *angle)
 {
-    float closest = 10000; // Just some large number.
+    float closest = 10000.0f; // Just some large number.
     int closest_index = -1;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
