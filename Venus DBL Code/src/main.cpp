@@ -64,30 +64,20 @@ Servo gripperServo;
 
 /////////////////////////////////////////
 
-// forward declarations
-//void update_ultrasound_state(UltrasoundState *state);
-int  get_ultrasound_distance();
-void turnLeftAngle(int angle, int time);
-void move_to_free_space();
-void forward(int time);
-void turnLeft(int time);
-void turnRight(int time);
-void backward(int time);
-void gripper_controll(Gripper status, int grip, int updown);
-void wait(int time);
-void IR_sensor1_scan();
+/* forward declarations */
+void  IR_sensor1_scan();
 float get_ultrasound_distance_cm();
 void  sweep_ultrasound(UltrasoundSensor *state);
 float find_closest_distance(UltrasoundSensor *state, float *angle);
 
 // Movement
-void  forward(int time);
-void  backward(int time);
-void  turnLeft(int time);
-void  turnRight(int time);
-void  halt_movement();
+void forward(int time);
+void backward(int time);
+void turnLeft(int time);
+void turnRight(int time);
+void halt_movement();
 
-void  turn_degrees(float theta);
+void turn_degrees(float theta);
 
 // Other controls
 void gripper_control(Gripper status, int grip, int updown);
@@ -112,7 +102,7 @@ struct Flags
 static Flags flags;
 
 // TODO: Clarification still needed on flags.
-#if 1
+#if 0
 int IR_flag1=0; //cliff or boundary
 int IR_flag2=0; //mountain or sample
 int IR_flag3=0; //Tower
@@ -148,52 +138,6 @@ void setup()
 
 void loop()
 {
-    sweep_ultrasound(&ultrasound_sensor);
-    IR_sensor1_scan();
-    //Serial.println(Ultrasound_flag);
-    //Serial.println(IR_flag1);
-    if(IR_flag2 && Ultrasound_flag){//mountain detected
-        Serial.println("mountain\n");
-    }else if(IR_flag1 && !Ultrasound_flag){//cliff or boundary detected
-        Serial.println("cliff or boundary\n");
-        turnLeft(500);
-        //wait(100);
-    }else if(!IR_flag2 && Ultrasound_flag){//sample detected
-        Serial.println("sample\n");
-        //MOVE TO SAMPLE//
-        gripper_controll(gripper_state,1,1);//close gripper and UP gripper
-    }else{
-        Serial.println("nothing\n");
-        forward(500);
-        //wait(5000);
-    }
-    
-#if 0
-    delay(4000);
-    turn_degrees(90);
-    delay(3000);
-    turn_degrees(180);
-    delay(3000);
-    turn_degrees(360);
-//    halt_movement();
-//    delay(2000);
-    
-
-    static int test = 1300;
-    
-    char buffer[256];
-    sprintf(buffer, "microseconds: %d", test);
-
-    Serial.println(buffer);
-
-    left_servo.writeMicroseconds(test);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
-
-    delay(3000);
-
-    test += 50;
-#endif
-
 #if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
