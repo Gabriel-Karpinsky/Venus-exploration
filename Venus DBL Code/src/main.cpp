@@ -395,9 +395,15 @@ float find_closest_distance(UltrasoundSensor *state, float *angle)
 
 void IR_sensor1_scan()
 {
-    // IR sensor code
-    // if cliff or boundary detected
-    printf("balls");
+    //IR sensor code
+    //if cliff or boundary detected
+    int IR_sensor1_value = analogRead(IR_sensor_pin1);
+    Serial.println(IR_sensor1_value);
+    if(IR_sensor1_value==0){
+        IR_flag1 = 1;
+    }else{
+        IR_flag1 = 0;
+    }
 }
 
 void gripper_control(Gripper status, int grip, int updown)
