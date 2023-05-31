@@ -65,7 +65,7 @@ Servo gripperServo;
 /////////////////////////////////////////
 
 /* forward declarations */
-void  IR_sensor1_scan();
+void  IR_sensor_BoundaryIR_scan();
 float get_ultrasound_distance_cm();
 void  sweep_ultrasound(UltrasoundSensor *state);
 float find_closest_distance(UltrasoundSensor *state, float *angle);
@@ -141,7 +141,7 @@ void loop()
 #if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
-    
+    IR_sensor_BoundaryIR_scan();
     sweep_ultrasound(&ultrasound_sensor);
 
     float closest_angle;
@@ -315,16 +315,16 @@ float find_closest_distance(UltrasoundSensor *state, float *angle)
     return closest;
 }
 
-void IR_sensor1_scan()
+void IR_sensor_BoundaryIR_scan()
 {
     //IR sensor code
     //if cliff or boundary detected
     int IR_sensor1_value = analogRead(IR_sensor_pin1);
     Serial.println(IR_sensor1_value);
     if(IR_sensor1_value==0){
-        IR_flag1 = 1;
+        flags.BoundaryIR = 1;
     }else{
-        IR_flag1 = 0;
+        flags.BoundaryIR = 0;
     }
 }
 
