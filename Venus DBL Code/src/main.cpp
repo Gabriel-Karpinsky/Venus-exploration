@@ -3,12 +3,12 @@
 
 /* Robot Behaviour Settings */
 
-// #define WHACKY_ROBOT
+#define WHACKY_ROBOT
 
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
 #  define RIGHT_STATIONARY 1510
-#  define ROTATION_TIME 1600.0f
+#  define ROTATION_TIME 900.0f
 #  define GRIPPER_CLOSE 0
 #  define GRIPPER_OPEN 80
 #  define GRIPPER_UP 180
@@ -64,30 +64,20 @@ Servo gripperServo;
 
 /////////////////////////////////////////
 
-// forward declarations
-//void update_ultrasound_state(UltrasoundState *state);
-int  get_ultrasound_distance();
-void turnLeftAngle(int angle, int time);
-void move_to_free_space();
-void forward(int time);
-void turnLeft(int time);
-void turnRight(int time);
-void backward(int time);
-void gripper_controll(Gripper status, int grip, int updown);
-void wait(int time);
-void IR_sensor1_scan();
+/* forward declarations */
+void  IR_sensor1_scan();
 float get_ultrasound_distance_cm();
 void  sweep_ultrasound(UltrasoundSensor *state);
 float find_closest_distance(UltrasoundSensor *state, float *angle);
 
 // Movement
-void  forward(int time);
-void  backward(int time);
-void  turnLeft(int time);
-void  turnRight(int time);
-void  halt_movement();
+void forward(int time);
+void backward(int time);
+void turnLeft(int time);
+void turnRight(int time);
+void halt_movement();
 
-void  turn_degrees(float theta);
+void turn_degrees(float theta);
 
 // Other controls
 void gripper_control(Gripper status, int grip, int updown);
@@ -112,7 +102,7 @@ struct Flags
 static Flags flags;
 
 // TODO: Clarification still needed on flags.
-#if 1
+#if 0
 int IR_flag1=0; //cliff or boundary
 int IR_flag2=0; //mountain or sample
 int IR_flag3=0; //Tower
@@ -148,50 +138,7 @@ void setup()
 
 void loop()
 {
-    sweep_ultrasound(&ultrasound_sensor);
-    IR_sensor1_scan();
-    //Serial.println(Ultrasound_flag);
-    //Serial.println(IR_flag1);
-    if(IR_flag2 && Ultrasound_flag){//mountain detected
-        Serial.println("mountain\n");
-    }else if(IR_flag1 && !Ultrasound_flag){//cliff or boundary detected
-        Serial.println("cliff or boundary\n");
-        turnLeft(500);
-        //wait(100);
-    }else if(!IR_flag2 && Ultrasound_flag){//sample detected
-        Serial.println("sample\n");
-        //MOVE TO SAMPLE//
-        gripper_controll(gripper_state,1,1);//close gripper and UP gripper
-    }else{
-        Serial.println("nothing\n");
-        forward(500);
-       //wait(5000);
-    } 
-#if 0
-    delay(4000);
-    turn_degrees(90);
-    delay(3000);
-    turn_degrees(180);
-//    halt_movement();
-//    delay(2000);
-    
-
-    static int test = 1300;
-    
-    char buffer[256];
-    sprintf(buffer, "microseconds: %d", test);
-
-    Serial.println(buffer);
-
-    left_servo.writeMicroseconds(test);
-    right_servo.writeMicroseconds(RIGHT_STATIONARY);
-
-    delay(3000);
-
-    test += 50;
-#endif
-
-#if 0
+#if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
     
@@ -217,7 +164,7 @@ void loop()
             (int)closest_angle);
 
     Serial.println(buffer);
-
+    
 
     if (boundary)
     {
@@ -236,32 +183,6 @@ void loop()
         forward(3000);
     }
 #endif
-
-
-    // TODO: #if 0'ed for now, because there could be a better way of doing this.
-#if 0
-    if(IR_flag2 && Ultrasound_flag)       // mountain detected
-    {
-        printf("mountain\n");
-    }
-    else if(IR_flag1 && !Ultrasound_flag) // cliff or boundary detected
-    {
-        printf("cliff or boundary\n");
-        turnLeftAngle(45,100);
-        halt_movement();
-    }
-    else if(!IR_flag2 && Ultrasound_flag) // sample detected
-    {
-        printf("sample\n");
-        gripper_control(gripper_state,1,1);// close gripper and UP gripper
-    }
-    else
-    {
-        turnLeftAngle(45,1000);
-        halt_movement();
-    }
-#endif
-    
 }
 
 /////////////////////////////////////////
@@ -359,22 +280,23 @@ void sweep_ultrasound(UltrasoundSensor *state)
 
         ultrasound_servo.write((int)target_angle);
 
-        delay(200); // TODO: This delay and the one a couple lines down need to be fine-tuned.
+        delay(100); // TODO: This delay and the one a couple lines down need to be fine-tuned.
     }
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        state->angles[i] = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        float t = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        state->angles[i] = t;
     }
 
     ultrasound_servo.write(90 - (int)fov / 2);
-    delay(600); // Delay so that the ultrasound servo has enough time to go back to the start position.
+    delay(700); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
 // Returns the angle at which this distance was sampled through second parameter.
 float find_closest_distance(UltrasoundSensor *state, float *angle)
 {
-    float closest = 10000; // Just some large number.
+    float closest = 10000.0f; // Just some large number.
     int closest_index = -1;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
