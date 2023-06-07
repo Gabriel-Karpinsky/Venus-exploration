@@ -8,9 +8,9 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "/mnt/WinC/_Data/_TUE/Year 01/Venus exploration/Venus DBL Code/include",
-                "/mnt/WinC/_Data/_TUE/Year 01/Venus exploration/Venus DBL Code/src",
-                "/mnt/WinC/_Data/_TUE/Year 01/Venus exploration/Venus DBL Code/.pio/libdeps/uno/Servo/src",
+                "/home/uselesser/Documents/Programing/Venus exploration/Venus DBL Code/include",
+                "/home/uselesser/Documents/Programing/Venus exploration/Venus DBL Code/src",
+                "/home/uselesser/Documents/Programing/Venus exploration/Venus DBL Code/.pio/libdeps/uno/Servo/src",
                 "/home/uselesser/.platformio/packages/framework-arduino-avr/cores/arduino",
                 "/home/uselesser/.platformio/packages/framework-arduino-avr/variants/standard",
                 "/home/uselesser/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
@@ -23,9 +23,9 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "/mnt/WinC/_Data/_TUE/Year 01/Venus exploration/Venus DBL Code/include",
-                    "/mnt/WinC/_Data/_TUE/Year 01/Venus exploration/Venus DBL Code/src",
-                    "/mnt/WinC/_Data/_TUE/Year 01/Venus exploration/Venus DBL Code/.pio/libdeps/uno/Servo/src",
+                    "/home/uselesser/Documents/Programing/Venus exploration/Venus DBL Code/include",
+                    "/home/uselesser/Documents/Programing/Venus exploration/Venus DBL Code/src",
+                    "/home/uselesser/Documents/Programing/Venus exploration/Venus DBL Code/.pio/libdeps/uno/Servo/src",
                     "/home/uselesser/.platformio/packages/framework-arduino-avr/cores/arduino",
                     "/home/uselesser/.platformio/packages/framework-arduino-avr/variants/standard",
                     "/home/uselesser/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",

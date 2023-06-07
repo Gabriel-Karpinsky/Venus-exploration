@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Servo.h>
-
 /* Robot Behaviour Settings */
 
 //#define WHACKY_ROBOT
@@ -37,7 +36,9 @@ const int ultrasound_pin         = 9;
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 //Analog pins
-const int IR_sensor_pin1 = A0;
+const int IR_sensor_pin1= A0;
+const int IR_sensor_pin2= A1;
+const int IR_sensor_pin3= A2;
 ////////////////////////////////////////////////////////
 
 // Per ultrasound sensor data structure. Holds an array of distances found by sweeping.
@@ -184,15 +185,17 @@ void loop()
         turn_degrees(furthest_angle);
     }
 
-    if (mountain)
+    else if (mountain)
     {
         Serial.println("Mountain detected.");
     }
 
-    if (just_ultrasound)
+    else if (just_ultrasound)
     {
         turn_degrees(furthest_angle);
         forward(3000);
+    } else{
+        forward(500);
     }
 #endif
 }
@@ -359,6 +362,30 @@ void IR_sensor_BoundaryIR_scan()
         flags.BoundaryIR = 1;
     }else{
         flags.BoundaryIR = 0;
+    }
+}
+void IR_sensor_Front_scan()
+{
+    //IR sensor code
+    //if object to the front detected
+    int IR_sensor2_value = analogRead(IR_sensor_pin2);
+    Serial.println(IR_sensor2_value);
+    if(IR_sensor2_value==0){
+        flags.FrontIR = 1;
+    }else{
+        flags.FrontIR = 0;
+    }
+}
+void IR_sensor_3_scan()
+{
+    //IR sensor code
+    //if Tower detected
+    int IR_sensor3_value = analogRead(IR_sensor_pin3);
+    Serial.println(IR_sensor3_value);
+    if(IR_sensor3_value==0){
+        flags.TowerIR = 1;
+    }else{
+        flags.TowerIR = 0;
     }
 }
 
