@@ -68,8 +68,8 @@ Servo gripperServo;
 /* forward declarations */
 void  IR_sensor_BoundaryIR_scan();
 float get_ultrasound_distance_cm();
-void  sweep_ultrasound(UltrasoundSensor *state);
-float find_closest_distance(UltrasoundSensor *state, float *angle);
+void  sweep_ultrasound(UltrasoundSensor *sensor);
+float find_closest_distance(UltrasoundSensor *sensor, float *angle);
 float find_furthest_distance(UltrasoundSensor *sensor, float *angle);
 
 // Movement
@@ -282,14 +282,14 @@ float get_ultrasound_distance_cm()
     return cm;
 }
 
-void sweep_ultrasound(UltrasoundSensor *state)
+void sweep_ultrasound(UltrasoundSensor *sensor)
 {
-    float fov = state->fov;
+    float fov = sensor->fov;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
         float distance = get_ultrasound_distance_cm();
-        state->distances[i] = distance;
+        sensor->distances[i] = distance;
 
         float target_angle = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
 
@@ -301,7 +301,7 @@ void sweep_ultrasound(UltrasoundSensor *state)
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
         float t = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
-        state->angles[i] = t;
+        sensor->angles[i] = t;
     }
 
     ultrasound_servo.write(90 - (int)fov / 2);
@@ -323,8 +323,6 @@ float find_closest_distance(UltrasoundSensor *sensor, float *angle)
         }
     }
 
-    // assert(closest_index > 0);
-
     *angle = sensor->angles[closest_index];
     
     return closest;
@@ -344,8 +342,6 @@ float find_furthest_distance(UltrasoundSensor *sensor, float *angle)
             furthest_index = i;
         }
     }
-
-    // assert(closest_index > 0);
 
     *angle = sensor->angles[furthest_index];
     
