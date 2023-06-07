@@ -70,6 +70,7 @@ void  IR_sensor_BoundaryIR_scan();
 float get_ultrasound_distance_cm();
 void  sweep_ultrasound(UltrasoundSensor *state);
 float find_closest_distance(UltrasoundSensor *state, float *angle);
+float find_furthest_distance(UltrasoundSensor *sensor, float *angle);
 
 // Movement
 void forward(int time);
@@ -297,25 +298,47 @@ void sweep_ultrasound(UltrasoundSensor *state)
 }
 
 // Returns the angle at which this distance was sampled through second parameter.
-float find_closest_distance(UltrasoundSensor *state, float *angle)
+float find_closest_distance(UltrasoundSensor *sensor, float *angle)
 {
     float closest = 10000.0f; // Just some large number.
     int closest_index = -1;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        if (state->distances[i] < closest)
+        if (sensor->distances[i] < closest)
         {
-            closest = state->distances[i];
+            closest = sensor->distances[i];
             closest_index = i;
         }
     }
 
     // assert(closest_index > 0);
 
-    *angle = state->angles[closest_index];
+    *angle = sensor->angles[closest_index];
     
     return closest;
+}
+
+// Returns the angle at which this distance was sampled through second parameter.
+float find_furthest_distance(UltrasoundSensor *sensor, float *angle)
+{
+    float furthest = 0.0f;
+    int furthest_index = -1;
+
+    for (int i = 0; i < SWEEP_COUNT; i++)
+    {
+        if (sensor->distances[i] > furthest)
+        {
+            furthest = sensor->distances[i];
+            furthest_index = i;
+        }
+    }
+
+    // assert(closest_index > 0);
+
+    *angle = sensor->angles[furthest_index];
+    
+    return furthest;
 }
 
 void IR_sensor_BoundaryIR_scan()
