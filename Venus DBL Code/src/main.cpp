@@ -3,7 +3,7 @@
 
 /* Robot Behaviour Settings */
 
-#define WHACKY_ROBOT
+//#define WHACKY_ROBOT
 
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
@@ -37,7 +37,7 @@ const int ultrasound_pin         = 9;
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 //Analog pins
-const int IR_sensor_pin1= A0;
+const int IR_sensor_pin1 = A0;
 ////////////////////////////////////////////////////////
 
 // Per ultrasound sensor data structure. Holds an array of distances found by sweeping.
@@ -139,6 +139,15 @@ void setup()
 
 void loop()
 {
+#if 0 // CALIBRATION TEST
+    delay(1000);
+    turn_degrees(90);
+    delay(1000);
+    turn_degrees(180);
+    delay(1000);
+    turn_degrees(360);
+#endif
+    
 #if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
@@ -146,7 +155,9 @@ void loop()
     sweep_ultrasound(&ultrasound_sensor);
 
     float closest_angle;
+    float furthest_angle;
     float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
+    float furthest_distance = find_furthest_distance(&ultrasound_sensor, &furthest_angle);
 
     float threshold = 15.0f;
     if (closest_distance < threshold)
@@ -170,7 +181,7 @@ void loop()
     if (boundary)
     {
         Serial.println("Boundary detected.");
-        turn_degrees(90);
+        turn_degrees(furthest_angle);
     }
 
     if (mountain)
@@ -180,7 +191,7 @@ void loop()
 
     if (just_ultrasound)
     {
-        turn_degrees(-closest_angle);
+        turn_degrees(furthest_angle);
         forward(3000);
     }
 #endif
