@@ -459,6 +459,7 @@ void safe_forward(float time)
         if (flags.BoundaryIR)
         {
             turn_degrees(90.0f);
+            return;
         }
         
         forward(STEP_TIME);
