@@ -36,7 +36,8 @@ const int left_servo_pin         = 12;
 const int right_servo_pin        = 13;
 const int ultrasound_servo_pin   = 11;
 const int claw_servo_pin         = 10;
-const int ultrasound_pin         = 9;
+const int ultrasound_pin_top     = 9;
+const int ultrasound_pin_bottom  = 6; // TODO: PUT THIS IN!!!
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 //Analog pins
@@ -48,6 +49,7 @@ const int IR_sensor_pin3= A2;
 struct UltrasoundSensor
 {
     float fov;
+    int pin;
 
     float distances[SWEEP_COUNT]; // Sweep right to left
     float angles[SWEEP_COUNT];
@@ -73,7 +75,7 @@ void  IR_sensor_BoundaryIR_scan();
 void IR_sensor_Front_scan();
 void IR_sensor_3_scan();
 float get_ultrasound_distance_cm();
-void  sweep_ultrasound(UltrasoundSensor *sensor);
+void  sweep_ultrasound();
 float find_closest_distance(UltrasoundSensor *sensor, float *angle);
 float find_furthest_distance(UltrasoundSensor *sensor, float *angle);
 
@@ -95,7 +97,8 @@ void gripper_control(Gripper *status, int grip);//, int updown
 /////////////////////////////////////////
 
 // Sensor data
-static UltrasoundSensor ultrasound_sensor;
+static UltrasoundSensor ultrasound_sensor_top;
+static UltrasoundSensor ultrasound_sensor_bottom;
 static Gripper gripper_state;
 
 
@@ -138,8 +141,10 @@ void setup()
     pinMode(right_wheel_sensor_pin, INPUT);
   
 
-    ultrasound_sensor = {.fov = 90.0f}; //set ultrasound sensor field of view to 90 degrees
-    gripper_state     = {.engaged = 0, .up = 0}; // TODO: It is already initialized to zero because static global.
+    ultrasound_sensor_top    = {.fov = 90.0f, .pin = ultrasound_pin_top};
+    ultrasound_sensor_bottom = {.fov = 90.0f, .pin = ultrasound_pin_bottom};
+
+    gripper_state = {.engaged = 0, .up = 0}; // TODO: It is already initialized to zero because static global.
 
 
     left_servo.writeMicroseconds(LEFT_STATIONARY);//write static position to servos
@@ -170,12 +175,12 @@ void loop()
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
     IR_sensor_BoundaryIR_scan();
-    sweep_ultrasound(&ultrasound_sensor);
+    sweep_ultrasound();
 
     float closest_angle;
     float furthest_angle;
-    float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
-    float furthest_distance = find_furthest_distance(&ultrasound_sensor, &furthest_angle);
+    float closest_distance = find_closest_distance(&ultrasound_sensor_top, &closest_angle);
+    float furthest_distance = find_furthest_distance(&ultrasound_sensor_top, &furthest_angle);
 
     float threshold = 10.0f;
     if (closest_distance < threshold)
@@ -290,35 +295,36 @@ void turn_degrees(float theta)
     }
 }
 
-float get_ultrasound_distance_cm()
+float get_ultrasound_distance_cm(UltrasoundSensor *sensor)
 {
     long duration;
     float cm;
+    int pin = sensor->pin;
 
-    pinMode(ultrasound_pin, OUTPUT);
+    pinMode(pin, OUTPUT);
 
-    digitalWrite(ultrasound_pin, LOW);
+    digitalWrite(pin, LOW);
     delayMicroseconds(2);
-    digitalWrite(ultrasound_pin, HIGH);
+    digitalWrite(pin, HIGH);
     delayMicroseconds(5);
-    digitalWrite(ultrasound_pin, LOW);
+    digitalWrite(pin, LOW);
 
-    pinMode(ultrasound_pin, INPUT);
-    duration = pulseIn(ultrasound_pin, HIGH);
+    pinMode(pin, INPUT);
+    duration = pulseIn(pin, HIGH);
 
     cm = duration / 29.0f / 2.0f;
     return cm;
 }
 
-void sweep_ultrasound(UltrasoundSensor *sensor)
+void sweep_ultrasound()
 {
-    float fov = sensor->fov;
+    // This whole thing is bad, but we only have two ultrasound sensors.
+    float fov = ultrasound_sensor_top.fov;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        float distance = get_ultrasound_distance_cm();
-        sensor->distances[i] = distance;
-
+        ultrasound_sensor_top.distances[i] = get_ultrasound_distance_cm(&ultrasound_sensor_top);
+        ultrasound_sensor_bottom.distances[i] = get_ultrasound_distance_cm(&ultrasound_sensor_bottom);
         float target_angle = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
 
         ultrasound_servo.write((int)target_angle);
@@ -329,7 +335,8 @@ void sweep_ultrasound(UltrasoundSensor *sensor)
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
         float t = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
-        sensor->angles[i] = t;
+        ultrasound_sensor_top.angles[i] = t;
+        ultrasound_sensor_bottom.angles[i] = t;
     }
 
     ultrasound_servo.write(90 - (int)fov / 2);
@@ -477,11 +484,11 @@ void go_home()
 {
     while(1)
     {
-        sweep_ultrasound(&ultrasound_sensor);
+        sweep_ultrasound();
         float closest_angle;
         float furthest_angle;
-        float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
-        float furthest_distance = find_furthest_distance(&ultrasound_sensor, &furthest_angle);
+        float closest_distance = find_closest_distance(&ultrasound_sensor_top, &closest_angle);
+        float furthest_distance = find_furthest_distance(&ultrasound_sensor_top, &furthest_angle);
 
         if (closest_distance < 20.0f)
         {
