@@ -24,6 +24,8 @@
 #  define GRIPPER_UP 0
 #endif
 
+const float FOV = 100.0f;
+
 // TODO: Fine tune this, and the rest should work since angle-time relation should be linear.
 const float ROTATION_CONST = ROTATION_TIME / 90.0f;
 
@@ -37,7 +39,7 @@ const int right_servo_pin        = 13;
 const int ultrasound_servo_pin   = 11;
 const int claw_servo_pin         = 10;
 const int ultrasound_pin_top     = 9;
-const int ultrasound_pin_bottom  = 6; // TODO: PUT THIS IN!!!
+const int ultrasound_pin_bottom  = 5;
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 //Analog pins
@@ -48,7 +50,6 @@ const int IR_sensor_pin3= A2;
 // Per ultrasound sensor data structure. Holds an array of distances found by sweeping.
 struct UltrasoundSensor
 {
-    float fov;
     int pin;
 
     float distances[SWEEP_COUNT]; // Sweep right to left
@@ -141,8 +142,8 @@ void setup()
     pinMode(right_wheel_sensor_pin, INPUT);
   
 
-    ultrasound_sensor_top    = {.fov = 90.0f, .pin = ultrasound_pin_top};
-    ultrasound_sensor_bottom = {.fov = 90.0f, .pin = ultrasound_pin_bottom};
+    ultrasound_sensor_top    = {.pin = ultrasound_pin_top};
+    ultrasound_sensor_bottom = {.pin = ultrasound_pin_bottom};
 
     gripper_state = {.engaged = 0, .up = 0}; // TODO: It is already initialized to zero because static global.
 
@@ -319,13 +320,12 @@ float get_ultrasound_distance_cm(UltrasoundSensor *sensor)
 void sweep_ultrasound()
 {
     // This whole thing is bad, but we only have two ultrasound sensors.
-    float fov = ultrasound_sensor_top.fov;
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
         ultrasound_sensor_top.distances[i] = get_ultrasound_distance_cm(&ultrasound_sensor_top);
         ultrasound_sensor_bottom.distances[i] = get_ultrasound_distance_cm(&ultrasound_sensor_bottom);
-        float target_angle = (90.0f - fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        float target_angle = (90.0f - FOV / 2.0f) + (i * FOV / SWEEP_COUNT);
 
         ultrasound_servo.write((int)target_angle);
 
@@ -334,12 +334,12 @@ void sweep_ultrasound()
 
     for (int i = 0; i < SWEEP_COUNT; i++)
     {
-        float t = (-fov / 2.0f) + (i * fov / SWEEP_COUNT);
+        float t = (-FOV / 2.0f) + (i * FOV / SWEEP_COUNT);
         ultrasound_sensor_top.angles[i] = t;
         ultrasound_sensor_bottom.angles[i] = t;
     }
 
-    ultrasound_servo.write(90 - (int)fov / 2);
+    ultrasound_servo.write(90 - (int)FOV / 2);
     delay(700); // Delay so that the ultrasound servo has enough time to go back to the start position.
 }
 
