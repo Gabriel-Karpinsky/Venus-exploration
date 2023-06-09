@@ -8,6 +8,8 @@
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
 #  define RIGHT_STATIONARY 1510
 #  define ROTATION_TIME 900.0f
+#  define FORWARD_CONST 100.0f
+#  define STEP_TIME 10.0 // milliseconds
 #  define GRIPPER_CLOSE 0
 #  define GRIPPER_OPEN 80
 #  define GRIPPER_UP 180
@@ -15,6 +17,8 @@
 #  define LEFT_STATIONARY  1500
 #  define RIGHT_STATIONARY 1500
 #  define ROTATION_TIME 1300.0f
+#  define FORWARD_CONST 100.0f
+#  define STEP_TIME 10.0 // milliseconds
 #  define GRIPPER_CLOSE 70
 #  define GRIPPER_OPEN 170
 #  define GRIPPER_UP 0
@@ -79,7 +83,10 @@ void turnLeft(int time);
 void turnRight(int time);
 void halt_movement();
 
+void forward_cm(float cm);
 void turn_degrees(float theta);
+
+void go_home();
 
 // Other controls
 void gripper_control(Gripper status, int grip, int updown);
@@ -140,6 +147,13 @@ void setup()
 
 void loop()
 {
+#if 1
+    delay(1000);
+    forward_cm(10);
+    delay(2000);
+    forward_cm(20);
+#endif
+    
 #if 0 // CALIBRATION TEST
     delay(1000);
     turn_degrees(90);
@@ -149,7 +163,7 @@ void loop()
     turn_degrees(360);
 #endif
     
-#if 1
+#if 0
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
     IR_sensor_BoundaryIR_scan();
@@ -403,5 +417,65 @@ void gripper_control(Gripper status, int grip, int updown)
     }else if(status.up == 1 && updown == 0){ //FIXXXXXXXXXX ???????
         gripperServo.write(GRIPPER_UP); //SHOULD BE GRIPPER_DOWN
         delay(2000);
+    }
+}
+
+void safe_forward(float time)
+{
+    float step_count = time / STEP_TIME;
+    for (int i = 0; i < step_count; i++)
+    {
+        IR_sensor_Boundary_scan();
+        if (flags.BoundaryIR)
+        {
+            turn_degrees(90.0f);
+        }
+        
+        forward(STEP_TIME);
+    }
+
+    
+}
+
+void forward_cm(float cm)
+{
+    safe_forward(cm * FORWARD_CONST);
+}
+
+void go_home()
+{
+    while(1)
+    {
+        sweep_ultrasound(&ultrasound_sensor);
+        float closest_angle;
+        float furthest_angle;
+        float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
+        float furthest_distance = find_furthest_distance(&ultrasound_sensor, &furthest_angle);
+
+        if (closest_distance < 20.0f)
+        {
+            if (furthest_distance < 10.0f)
+            {
+                turn_degrees(furthest_angle);
+            }
+            else
+            {
+                static int prefered_dir = 0;
+                if (prefered_dir == 0)
+                {
+                    turn_degrees(45);
+                    prefered_dir = 1;
+                }
+                else
+                {
+                    turn_degrees(-45);
+                    prefered_dir = 0;
+                }
+            }
+            
+            forward_cm(closest_distance); // Keep it safe by going the closest.
+        }
+        
+        
     }
 }
