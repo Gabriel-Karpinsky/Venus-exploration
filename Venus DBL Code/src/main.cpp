@@ -143,14 +143,25 @@ void setup()
 
 void loop()
 {
-#if 0
+#if 0 // CALIBRATION TEST
+    delay(1000);
+    turn_degrees(90);
+    delay(1000);
+    turn_degrees(180);
+    delay(1000);
+    turn_degrees(360);
+#endif
+    
+#if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
     IR_sensor_BoundaryIR_scan();
     sweep_ultrasound(&ultrasound_sensor);
 
     float closest_angle;
+    float furthest_angle;
     float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
+    float furthest_distance = find_furthest_distance(&ultrasound_sensor, &furthest_angle);
 
     float threshold = 10.0f;
     if (closest_distance < threshold)
@@ -174,7 +185,7 @@ void loop()
     if (boundary)
     {
         Serial.println("Boundary detected.");
-        turn_degrees(30);
+        turn_degrees(furthest_angle);
     }
 
     else if (mountain)
