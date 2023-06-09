@@ -2,7 +2,7 @@
 #include <Servo.h>
 /* Robot Behaviour Settings */
 
-//#define WHACKY_ROBOT
+//#define WHACKY_ROBOT //uncomment if shity robot is used 
 
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
@@ -43,7 +43,6 @@ const int right_wheel_sensor_pin = 7;
 const int IR_sensor_pin1= A0;
 const int IR_sensor_pin2= A1;
 const int IR_sensor_pin3= A2;
-////////////////////////////////////////////////////////
 
 // Per ultrasound sensor data structure. Holds an array of distances found by sweeping.
 struct UltrasoundSensor
@@ -71,6 +70,8 @@ Servo gripperServo;
 
 /* forward declarations */
 void  IR_sensor_BoundaryIR_scan();
+void IR_sensor_Front_scan();
+void IR_sensor_3_scan();
 float get_ultrasound_distance_cm();
 void  sweep_ultrasound(UltrasoundSensor *sensor);
 float find_closest_distance(UltrasoundSensor *sensor, float *angle);
@@ -89,7 +90,7 @@ void turn_degrees(float theta);
 void go_home();
 
 // Other controls
-void gripper_control(Gripper status, int grip, int updown);
+void gripper_control(Gripper *status, int grip);//, int updown
 
 /////////////////////////////////////////
 
@@ -112,36 +113,38 @@ static Flags flags;
 
 // TODO: Clarification still needed on flags.
 #if 0
-int IR_flag1=0; //cliff or boundary
-int IR_flag2=0; //mountain or sample
-int IR_flag3=0; //Tower
-
+int IR_flag1=0; //cliff o, int updown
 int Ultrasound_flag=0;
 int Ultrasound_angle_flag=0;
 #endif
 
-/////////////////////////////////////////
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//END OF DECLARES 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////    
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup()
 {
     Serial.begin(115200); //PIO monitoring budrate (needs to be set in platformio.ini as well)
 
-    left_servo.attach(left_servo_pin);
+    left_servo.attach(left_servo_pin); //Attach servos to pins
     right_servo.attach(right_servo_pin);
+    gripperServo.attach(claw_servo_pin);
     
-    ultrasound_servo.attach(ultrasound_servo_pin);
+    ultrasound_servo.attach(ultrasound_servo_pin);//Attach ultrasound servo to pin
 
     pinMode(left_wheel_sensor_pin, INPUT);
     pinMode(right_wheel_sensor_pin, INPUT);
+  
 
-    ultrasound_sensor = {.fov = 90.0f};
+    ultrasound_sensor = {.fov = 90.0f}; //set ultrasound sensor field of view to 90 degrees
     gripper_state     = {.engaged = 0, .up = 0}; // TODO: It is already initialized to zero because static global.
 
 
-    left_servo.writeMicroseconds(LEFT_STATIONARY);
+    left_servo.writeMicroseconds(LEFT_STATIONARY);//write static position to servos
     right_servo.writeMicroseconds(RIGHT_STATIONARY);
-    gripperServo.write(GRIPPER_UP);
+    gripperServo.write(GRIPPER_OPEN); // Lift gripper
 }
 
 
@@ -174,7 +177,7 @@ void loop()
     float closest_distance = find_closest_distance(&ultrasound_sensor, &closest_angle);
     float furthest_distance = find_furthest_distance(&ultrasound_sensor, &furthest_angle);
 
-    float threshold = 15.0f;
+    float threshold = 10.0f;
     if (closest_distance < threshold)
     {
         flags.Ultrasound = true;
@@ -184,10 +187,10 @@ void loop()
     bool boundary = flags.BoundaryIR;
     bool mountain = flags.FrontIR && flags.Ultrasound;
 
-    bool just_ultrasound = flags.Ultrasound;
+    bool Sample = flags.Ultrasound;
 
     char buffer[256];
-    sprintf(buffer, "%d cm @ angle %d", (int)closest_distance,
+    sprintf(buffer, "closest distance: %d cm @ angle %d", (int)closest_distance,
             (int)closest_angle);
 
     Serial.println(buffer);
@@ -204,14 +207,22 @@ void loop()
         Serial.println("Mountain detected.");
     }
 
-    else if (just_ultrasound)
+    else if (Sample)
     {
-        turn_degrees(furthest_angle);
-        forward(3000);
+        turn_degrees(-closest_angle);
+        forward(1000);
     } else{
-        forward(500);
+        //forward(500);
+        gripperServo.write(1700);
+        gripper_control(gripper_state,1,1);
     }
 #endif
+    delay(1000);
+    gripper_control(&gripper_state,1);
+    delay(1000);
+    gripper_control(&gripper_state,2);
+    delay(1000);
+    gripper_control(&gripper_state,0);
 }
 
 /////////////////////////////////////////
@@ -222,6 +233,9 @@ void loop()
   Right wheel counterclockwise -> right_servo.writeMicroseconds(1300);
   Right wheel clockwise        -> right_servo.writeMicroseconds(1700);
 */
+////////////////////////////////
+//PE
+////////////////////////////////
 void forward(int time)
 {
     left_servo.writeMicroseconds(1700);
@@ -362,12 +376,12 @@ float find_furthest_distance(UltrasoundSensor *sensor, float *angle)
     return furthest;
 }
 
-void IR_sensor_BoundaryIR_scan()
+void IR_sensor_Boundary_scan()
 {
     //IR sensor code
     //if cliff or boundary detected
     int IR_sensor1_value = analogRead(IR_sensor_pin1);
-    Serial.println(IR_sensor1_value);
+    //Serial.println(IR_sensor1_value);
     if(IR_sensor1_value==0){
         flags.BoundaryIR = 1;
     }else{
@@ -379,7 +393,7 @@ void IR_sensor_Front_scan()
     //IR sensor code
     //if object to the front detected
     int IR_sensor2_value = analogRead(IR_sensor_pin2);
-    Serial.println(IR_sensor2_value);
+    //Serial.println(IR_sensor2_value);
     if(IR_sensor2_value==0){
         flags.FrontIR = 1;
     }else{
@@ -391,7 +405,7 @@ void IR_sensor_3_scan()
     //IR sensor code
     //if Tower detected
     int IR_sensor3_value = analogRead(IR_sensor_pin3);
-    Serial.println(IR_sensor3_value);
+    //Serial.println(IR_sensor3_value);
     if(IR_sensor3_value==0){
         flags.TowerIR = 1;
     }else{
@@ -399,25 +413,41 @@ void IR_sensor_3_scan()
     }
 }
 
-void gripper_control(Gripper status, int grip, int updown)
+void gripper_control(Gripper *status, int grip)//int updown
 {
     //Servo called: gripperServo
 
-    if(status.engaged == 0 && grip == 1){
+    if(status->engaged != 1 && grip == 1){
         gripperServo.write(GRIPPER_CLOSE);
-        delay(2000);
-    }else if(status.engaged==1 && grip == 0){
+        delay(5000);
+        status->engaged=1;
+    }else if(status->engaged==0 && grip == 0){
+        Serial.println("wrong input 1");
+    }else if(status->engaged == 1 && grip == 1){
+        Serial.println("wrong input 2");
+    }else if(status->engaged!=0 && grip == 0){
         gripperServo.write(GRIPPER_OPEN);
-        delay(2000);
+        delay(5000);
+        status->engaged=0;
+    }else if (status->engaged != 2 && grip == 2){
+        gripperServo.write(GRIPPER_UP);
+        delay(5000);
+        status->engaged=2;
+    }else{
+        Serial.println("wrong input 3");
     }
-
+    
+    #if 0
     if(status.up == 0 && updown == 1){
         gripperServo.write(GRIPPER_UP);
         delay(2000);
+        //gripperServo.write(1500);
     }else if(status.up == 1 && updown == 0){ //FIXXXXXXXXXX ???????
         gripperServo.write(GRIPPER_UP); //SHOULD BE GRIPPER_DOWN
         delay(2000);
+        //gripperServo.write(1500);
     }
+    #endif
 }
 
 void safe_forward(float time)
