@@ -2,7 +2,7 @@
 #include <Servo.h>
 /* Robot Behaviour Settings */
 
-#define WHACKY_ROBOT //uncomment if shity robot is used 
+//#define WHACKY_ROBOT //uncomment if shity robot is used 
 
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
@@ -164,7 +164,8 @@ void loop()
 #if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
-    IR_sensor_Boundary_scan();
+    //IR_sensor_Boundary_scan();
+    //IR_sensor_Front_scan();
     sweep_ultrasound();
 
     float closest_angle;
@@ -194,7 +195,7 @@ void loop()
     if (boundary)
     {
         Serial.println("Boundary detected.");
-        turn_degrees(90);
+        turn_degrees(45);
     }
 
     else if (mountain)
@@ -205,8 +206,10 @@ void loop()
 
     else if (Sample)
     {
-        turn_degrees(-closest_angle);
+        //turn_degrees(-closest_angle);
         forward(1000);
+        //gripper_control(&gripper_state,1);
+        //gripper_control(&gripper_state,2);
     } else{
         forward_cm(10);
 //        gripperServo.write(1700);
@@ -291,7 +294,8 @@ float get_ultrasound_distance_cm(UltrasoundSensor *sensor)
     long duration;
     float cm;
     int pin = sensor->pin;
-
+    static int starttime, endtime;
+        starttime = millis();
     pinMode(pin, OUTPUT);
 
     digitalWrite(pin, LOW);
@@ -299,10 +303,14 @@ float get_ultrasound_distance_cm(UltrasoundSensor *sensor)
     digitalWrite(pin, HIGH);
     delayMicroseconds(5);
     digitalWrite(pin, LOW);
-
+    
     pinMode(pin, INPUT);
     duration = pulseIn(pin, HIGH);
+    endtime = millis();
+    char buffer[256];
+    sprintf(buffer, "time taken %d", (int)endtime-starttime);
 
+    Serial.println(buffer);
     cm = duration / 29.0f / 2.0f;
     return cm;
 }
