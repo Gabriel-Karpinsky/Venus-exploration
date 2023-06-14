@@ -2,7 +2,7 @@
 #include <Servo.h>
 /* Robot Behaviour Settings */
 
-//#define WHACKY_ROBOT //uncomment if shity robot is used 
+#define WHACKY_ROBOT //uncomment if shity robot is used 
 
 #ifdef WHACKY_ROBOT
 #  define LEFT_STATIONARY  1460 // These may be incorrect and need to be retuned again.
@@ -39,7 +39,7 @@ const int right_servo_pin        = 13;
 const int ultrasound_servo_pin   = 11;
 const int claw_servo_pin         = 10;
 const int ultrasound_pin_top     = 9;
-const int ultrasound_pin_bottom  = 5;
+const int ultrasound_pin_bottom  = 6;
 const int left_wheel_sensor_pin  = 8;
 const int right_wheel_sensor_pin = 7;
 //Analog pins
@@ -72,7 +72,7 @@ Servo gripperServo;
 /////////////////////////////////////////
 
 /* forward declarations */
-void  IR_sensor_BoundaryIR_scan();
+void IR_sensor_Boundary_scan();
 void IR_sensor_Front_scan();
 void IR_sensor_3_scan();
 float get_ultrasound_distance_cm();
@@ -110,17 +110,11 @@ struct Flags
     bool FrontIR;    // Mountain or sample
     bool TowerIR;    // Tower
 
-    bool Ultrasound; // Set if passes threshold
+    bool Top_Ultrasound; // Set if passes threshold
+    bool Bottom_Ultrasound; // Set if passes threshold
 };
 
 static Flags flags;
-
-// TODO: Clarification still needed on flags.
-#if 0
-int IR_flag1=0; //cliff o, int updown
-int Ultrasound_flag=0;
-int Ultrasound_angle_flag=0;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,15 +132,10 @@ void setup()
     
     ultrasound_servo.attach(ultrasound_servo_pin);//Attach ultrasound servo to pin
 
-    pinMode(left_wheel_sensor_pin, INPUT);
-    pinMode(right_wheel_sensor_pin, INPUT);
-  
-
     ultrasound_sensor_top    = {.pin = ultrasound_pin_top};
     ultrasound_sensor_bottom = {.pin = ultrasound_pin_bottom};
 
     gripper_state = {.engaged = 0, .up = 0}; // TODO: It is already initialized to zero because static global.
-
 
     left_servo.writeMicroseconds(LEFT_STATIONARY);//write static position to servos
     right_servo.writeMicroseconds(RIGHT_STATIONARY);
@@ -156,7 +145,7 @@ void setup()
 
 void loop()
 {
-#if 1
+#if 0 // Distance calibration
     delay(1000);
     forward_cm(10);
     delay(2000);
@@ -172,10 +161,10 @@ void loop()
     turn_degrees(360);
 #endif
     
-#if 0
+#if 1
     // Reset flags every loop. Makes sense to do this to me right now, but can go to if-elses if need be.
     flags = {};
-    IR_sensor_BoundaryIR_scan();
+    IR_sensor_Boundary_scan();
     sweep_ultrasound();
 
     float closest_angle;
@@ -183,17 +172,17 @@ void loop()
     float closest_distance = find_closest_distance(&ultrasound_sensor_top, &closest_angle);
     float furthest_distance = find_furthest_distance(&ultrasound_sensor_top, &furthest_angle);
 
-    float threshold = 10.0f;
+    float threshold = 25.0f;
     if (closest_distance < threshold)
     {
-        flags.Ultrasound = true;
+        flags.Top_Ultrasound = true;
     }
 
     
     bool boundary = flags.BoundaryIR;
-    bool mountain = flags.FrontIR && flags.Ultrasound;
+    bool mountain = flags.Top_Ultrasound;
 
-    bool Sample = flags.Ultrasound;
+    bool Sample = flags.Bottom_Ultrasound;
 
     char buffer[256];
     sprintf(buffer, "closest distance: %d cm @ angle %d", (int)closest_distance,
@@ -205,11 +194,12 @@ void loop()
     if (boundary)
     {
         Serial.println("Boundary detected.");
-        turn_degrees(furthest_angle);
+        turn_degrees(90);
     }
 
     else if (mountain)
     {
+        turn_degrees(furthest_angle * 2.0f);
         Serial.println("Mountain detected.");
     }
 
@@ -218,17 +208,11 @@ void loop()
         turn_degrees(-closest_angle);
         forward(1000);
     } else{
-        //forward(500);
-        gripperServo.write(1700);
-        gripper_control(gripper_state,1,1);
+        forward_cm(10);
+//        gripperServo.write(1700);
+//        gripper_control(gripper_state,1,1);
     }
 #endif
-    delay(1000);
-    gripper_control(&gripper_state,1);
-    delay(1000);
-    gripper_control(&gripper_state,2);
-    delay(1000);
-    gripper_control(&gripper_state,0);
 }
 
 /////////////////////////////////////////
