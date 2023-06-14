@@ -213,6 +213,12 @@ void loop()
 //        gripper_control(gripper_state,1,1);
     }
 #endif
+    //delay(1000);
+    //gripper_control(&gripper_state,1);
+    //delay(1000);
+    //gripper_control(&gripper_state,2);
+    //delay(1000);
+    //gripper_control(&gripper_state,0);
 }
 
 /////////////////////////////////////////
